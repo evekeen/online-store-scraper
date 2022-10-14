@@ -54,6 +54,9 @@ def scrape():
                 print('product url {}\n'.format(product_url))
                 driver.get(product_url)
                 matches = re.search(r"\.com/product/(\d+)/", product_url)
+                if not matches:
+                    print('ERROR: Could not parse the product page')
+                    continue
                 product_id = matches.group(1)
 
                 product_path = os.path.join(name, product_id)
@@ -71,6 +74,7 @@ def scrape():
                     if not color_name:
                         continue
                     color_name = re.sub(r'[\s|/]', '-', color_name).lower()
+                    print('> {}'.format(color_name))
 
                     variant_path = os.path.join(product_path, color_name)
                     if not os.path.exists(variant_path):
@@ -91,7 +95,7 @@ def scrape():
                             urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
                             i += 1
                         else:
-                            print('>>> cannot parse url', src)
+                            print('ERROR: cannot parse url', src)
 
 
 service = Service(executable_path='/Users/ivkin/bin/chromedriver')
