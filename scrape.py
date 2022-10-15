@@ -27,6 +27,7 @@ urls = [
 
 
 def scrape():
+    seen_products = set()
     for url in urls:
         driver.get(url)
         name = url.rpartition('/')[-1]
@@ -44,7 +45,7 @@ def scrape():
         #     start_page = 7
 
         for page in range(start_page, page_count):
-            print('page #{}'.format(page))
+            print('page #{}/{}'.format(page, page_count))
             page_url = '{}?page={}'.format(url, page)
             driver.get(page_url)
 
@@ -53,13 +54,16 @@ def scrape():
             product_urls = list(map(lambda p: p.get_attribute('href'), products))
 
             for product_url in product_urls:
-                print('product url {}\n'.format(product_url))
-                driver.get(product_url)
                 matches = re.search(r"\.com/product/(\d+/.*)", product_url)
                 if not matches:
                     print('ERROR: Could not parse the product page')
                     continue
                 product_id = matches.group(1).replace('/', '-')
+                if product_id in seen_products:
+                    continue
+
+                print('product url {}\n'.format(product_url))
+                driver.get(product_url)
 
                 product_path = os.path.join(name, product_id)
                 if not os.path.exists(product_path):
