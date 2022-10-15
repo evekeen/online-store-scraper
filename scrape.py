@@ -10,12 +10,10 @@ import re
 import urllib.request
 
 urls = [
-    "https://www.rei.com/s/mens-fall-clothing",
     "https://www.rei.com/c/mens-jackets",
     "https://www.rei.com/c/mens-tops",
     "https://www.rei.com/c/mens-bottoms",
     "https://www.rei.com/c/mens-swimwear",
-    "https://www.rei.com/s/womens-fall-clothing",
     "https://www.rei.com/c/womens-jackets",
     "https://www.rei.com/c/womens-tops",
     "https://www.rei.com/c/womens-bottoms",
@@ -41,7 +39,11 @@ def scrape():
         matches = re.search(r"\?page=(\d+)", last_page_url)
         page_count = int(matches.group(1))
 
-        for page in range(1, page_count):
+        start_page = 1
+        # if name == 'mens-fall-clothing':
+        #     start_page = 7
+
+        for page in range(start_page, page_count):
             print('page #{}'.format(page))
             page_url = '{}?page={}'.format(url, page)
             driver.get(page_url)
@@ -53,11 +55,11 @@ def scrape():
             for product_url in product_urls:
                 print('product url {}\n'.format(product_url))
                 driver.get(product_url)
-                matches = re.search(r"\.com/product/(\d+)/", product_url)
+                matches = re.search(r"\.com/product/(\d+/.*)", product_url)
                 if not matches:
                     print('ERROR: Could not parse the product page')
                     continue
-                product_id = matches.group(1)
+                product_id = matches.group(1).replace('/', '-')
 
                 product_path = os.path.join(name, product_id)
                 if not os.path.exists(product_path):
