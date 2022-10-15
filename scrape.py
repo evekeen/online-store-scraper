@@ -92,7 +92,8 @@ def scrape():
                             image_url = image_base + '576x768'
                             print(image_id)
                             image_path = os.path.join(variant_path, '{}-{}.jpg'.format(i, image_id))
-                            urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
+                            if not os.path.exists(image_path):
+                                urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
                             i += 1
                         else:
                             print('ERROR: cannot parse url', src)
