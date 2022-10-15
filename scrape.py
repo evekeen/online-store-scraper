@@ -65,7 +65,11 @@ def scrape():
                 # el = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#search-results > ul > li > a")))
                 # action.move_to_element(el).click().perform()
 
-                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.buy-box__purchase-form fieldset button')))
+                try:
+                    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.buy-box__purchase-form fieldset button')))
+                except:
+                    print('No colors found')
+                    continue
                 color_buttons = driver.find_elements(by=By.CSS_SELECTOR, value='.buy-box__purchase-form fieldset button')
 
                 print('color options:', len(color_buttons))
@@ -81,27 +85,28 @@ def scrape():
 
                     button.click()
                     try:
-                        wait.until(
+                        wait_short.until(
                             EC.presence_of_element_located((By.CSS_SELECTOR, '#apparel-media-image-container .media-center-carousel__image-button > img')))
-                        images = driver.find_elements(By.CSS_SELECTOR, '#apparel-media-image-container .media-center-carousel__image-button > img')
-                        print('> {} images: {}'.format(color_name, len(images)))
-                        i = 1
-                        for image in images:
-                            src = image.get_attribute('src')
-                            matches = re.search(r"(/media/(.*)\?size=).*", src)
-                            if matches:
-                                image_base = matches.group(1)
-                                image_id = matches.group(2)
-                                image_url = image_base + '576x768'
-                                print(image_id)
-                                image_path = os.path.join(variant_path, '{}-{}.jpg'.format(i, image_id))
-                                if not os.path.exists(image_path):
-                                    urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
-                                i += 1
-                            else:
-                                print('ERROR: cannot parse url', src)
                     except:
                         print('No variants found')
+                        continue
+                    images = driver.find_elements(By.CSS_SELECTOR, '#apparel-media-image-container .media-center-carousel__image-button > img')
+                    print('> {} images: {}'.format(color_name, len(images)))
+                    i = 1
+                    for image in images:
+                        src = image.get_attribute('src')
+                        matches = re.search(r"(/media/(.*)\?size=).*", src)
+                        if matches:
+                            image_base = matches.group(1)
+                            image_id = matches.group(2)
+                            image_url = image_base + '576x768'
+                            print(image_id)
+                            image_path = os.path.join(variant_path, '{}-{}.jpg'.format(i, image_id))
+                            if not os.path.exists(image_path):
+                                urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
+                            i += 1
+                        else:
+                            print('ERROR: cannot parse url', src)
 
 
 service = Service(executable_path='/Users/ivkin/bin/chromedriver')
@@ -118,7 +123,8 @@ driver.execute_cdp_cmd('Network.setUserAgentOverride', {"userAgent": 'Mozilla/5.
                                                                      'AppleWebKit/537.36 (KHTML, like Gecko) '
                                                                      'Chrome/85.0.4183.102 Safari/537.36'})
 
-wait = WebDriverWait(driver, 10)
+wait = WebDriverWait(driver, 30)
+wait_short = WebDriverWait(driver, 10)
 action = ActionChains(driver)
 
 try:
