@@ -106,7 +106,12 @@ class Scraper:
 
     def load_carousel_product(self, product_path):
         try:
-            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.buy-box__purchase-form fieldset button')))
+            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#container')))
+        except:
+            print('bad page state detected')
+            return False
+        try:
+            self.wait_short.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.buy-box__purchase-form fieldset button')))
         except:
             print('No colors found')
             return False
