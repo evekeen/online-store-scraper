@@ -74,29 +74,34 @@ def scrape():
                     if not color_name:
                         continue
                     color_name = re.sub(r'[\s|/]', '-', color_name).lower()
-                    print('> {}'.format(color_name))
 
                     variant_path = os.path.join(product_path, color_name)
                     if not os.path.exists(variant_path):
                         os.mkdir(variant_path)
 
                     button.click()
-                    images = driver.find_elements(by=By.CSS_SELECTOR, value='#apparel-media-image-container .media-center-carousel__image-button > img')
-                    i = 1
-                    for image in images:
-                        src = image.get_attribute('src')
-                        matches = re.search(r"(/media/(.*)\?size=).*", src)
-                        if matches:
-                            image_base = matches.group(1)
-                            image_id = matches.group(2)
-                            image_url = image_base + '576x768'
-                            print(image_id)
-                            image_path = os.path.join(variant_path, '{}-{}.jpg'.format(i, image_id))
-                            if not os.path.exists(image_path):
-                                urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
-                            i += 1
-                        else:
-                            print('ERROR: cannot parse url', src)
+                    try:
+                        wait.until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, '#apparel-media-image-container .media-center-carousel__image-button > img')))
+                        images = driver.find_elements(By.CSS_SELECTOR, '#apparel-media-image-container .media-center-carousel__image-button > img')
+                        print('> {} images: {}'.format(color_name, len(images)))
+                        i = 1
+                        for image in images:
+                            src = image.get_attribute('src')
+                            matches = re.search(r"(/media/(.*)\?size=).*", src)
+                            if matches:
+                                image_base = matches.group(1)
+                                image_id = matches.group(2)
+                                image_url = image_base + '576x768'
+                                print(image_id)
+                                image_path = os.path.join(variant_path, '{}-{}.jpg'.format(i, image_id))
+                                if not os.path.exists(image_path):
+                                    urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
+                                i += 1
+                            else:
+                                print('ERROR: cannot parse url', src)
+                    except:
+                        print('No variants found')
 
 
 service = Service(executable_path='/Users/ivkin/bin/chromedriver')
