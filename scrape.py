@@ -9,9 +9,9 @@ import os
 import re
 import urllib.request
 import time
+import shutil
 
 urls = [
-    "https://www.rei.com/c/mens-jackets",
     "https://www.rei.com/c/mens-tops",
     "https://www.rei.com/c/mens-bottoms",
     "https://www.rei.com/c/mens-swimwear",
@@ -42,8 +42,6 @@ def scrape():
         page_count = int(matches.group(1))
 
         start_page = 1
-        # if name == 'mens-fall-clothing':
-        #     start_page = 7
 
         for page in range(start_page, page_count):
             print('page #{}/{}'.format(page, page_count))
@@ -55,7 +53,7 @@ def scrape():
                 print('No product urls found')
                 continue
 
-            products = driver.find_elements(by=By.CSS_SELECTOR, value="#search-results > ul > li > a")
+            products = driver.find_elements(By.CSS_SELECTOR, "#search-results > ul > li > a")
             print('products on page', len(products))
             product_urls = list(map(lambda p: p.get_attribute('href'), products))
 
@@ -69,19 +67,36 @@ def scrape():
                     continue
                 seen_products.add(product_id)
 
-                print('product url {}\n'.format(product_url))
-                driver.get(product_url)
-
-                product_path = os.path.join(name, product_id)
-                if not os.path.exists(product_path):
-                    os.mkdir(product_path)
-
-                if driver.find_elements(By.CSS_SELECTOR, '.ui-slideshow-slide__image-wrapper'):
-                    load_slideshow_product(product_path)
-                else:
-                    load_carousel_product(product_path)
-            # sleep one minute after each page - to avoid beeing blocked
+                load_product(product_url, name, product_id, 1)
+            # sleep one minute after each page - to avoid being blocked
             time.sleep(60)
+
+
+def load_product(product_url, name, product_id, trial):
+    print('product url {}\n'.format(product_url))
+
+    product_path = os.path.join(name, product_id)
+    if os.path.exists(product_path):
+        print('product already downloaded')
+        return
+
+    tmp_product_path = os.path.join(name, 'tmp-{}'.format(product_id))
+    shutil.rmtree(tmp_product_path)
+    os.mkdir(tmp_product_path)
+
+    driver.get(product_url)
+
+    if driver.find_elements(By.CSS_SELECTOR, '.ui-slideshow-slide__image-wrapper'):
+        product_loaded = load_slideshow_product(tmp_product_path)
+    else:
+        product_loaded = load_carousel_product(tmp_product_path)
+    if product_loaded:
+        os.mkdir(product_path)
+        shutil.move(tmp_product_path, product_path, copy_function=shutil.copytree)
+    else:
+        print('retrying #{} after delay...'.format(trial))
+        time.sleep(120 * trial)
+        load_product(product_url, name, product_id, trial + 1)
 
 
 def load_carousel_product(product_path):
@@ -89,7 +104,7 @@ def load_carousel_product(product_path):
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.buy-box__purchase-form fieldset button')))
     except:
         print('No colors found')
-        return
+        return False
     color_buttons = driver.find_elements(By.CSS_SELECTOR, '.buy-box__purchase-form fieldset button')
 
     print('carousel color options:', len(color_buttons))
@@ -122,6 +137,7 @@ def load_carousel_product(product_path):
                 i += 1
             else:
                 print('ERROR: cannot parse url', src)
+    return True
 
 
 def load_slideshow_product(product_path):
@@ -129,7 +145,7 @@ def load_slideshow_product(product_path):
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'ui-slideshow-navigation .ui-slideshow-control__image')))
     except:
         print('No variants found')
-        return
+        return False
     images = driver.find_elements(By.CSS_SELECTOR, 'ui-slideshow-navigation .ui-slideshow-control__image')
     print('> slideshow images: {}'.format(len(images)))
     i = 1
@@ -152,6 +168,7 @@ def load_slideshow_product(product_path):
             i += 1
         else:
             print('ERROR: cannot parse url', src)
+    return i > 1
 
 
 def download_image(variant_path, i, matches):
