@@ -146,10 +146,15 @@ class Scraper:
 
     def load_slideshow_product(self, product_path):
         try:
-            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'ui-slideshow-navigation .ui-slideshow-control__image')))
+            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#container')))
+        except:
+            print('bad page state detected')
+            return False
+        try:
+            self.wait_short.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'ui-slideshow-navigation .ui-slideshow-control__image')))
         except:
             print('No variants found')
-            return False
+            return True
         images = self.driver.find_elements(By.CSS_SELECTOR, 'ui-slideshow-navigation .ui-slideshow-control__image')
         print('> slideshow images: {}'.format(len(images)))
         i = 1
