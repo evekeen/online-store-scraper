@@ -124,7 +124,7 @@ driver.execute_cdp_cmd('Network.setUserAgentOverride', {"userAgent": 'Mozilla/5.
                                                                      'Chrome/85.0.4183.102 Safari/537.36'})
 
 wait = WebDriverWait(driver, 30)
-wait_short = WebDriverWait(driver, 10)
+wait_short = WebDriverWait(driver, 5)
 action = ActionChains(driver)
 
 try:
