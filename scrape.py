@@ -8,6 +8,7 @@ from selenium.webdriver import ActionChains
 import os
 import re
 import urllib.request
+import time
 
 urls = [
     "https://www.rei.com/c/mens-jackets",
@@ -48,15 +49,20 @@ def scrape():
             print('page #{}/{}'.format(page, page_count))
             page_url = '{}?page={}'.format(url, page)
             driver.get(page_url)
+            try:
+                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#search-results > ul > li > a')))
+            except:
+                print('No product urls found')
+                continue
 
             products = driver.find_elements(by=By.CSS_SELECTOR, value="#search-results > ul > li > a")
             print('products on page', len(products))
             product_urls = list(map(lambda p: p.get_attribute('href'), products))
 
             for product_url in product_urls:
-                matches = re.search(r"\.com/product/(\d+/.*)", product_url)
+                matches = re.search(r"/product/(\d+/.*)", product_url)
                 if not matches:
-                    print('ERROR: Could not parse the product page')
+                    print('ERROR: Could not parse the product page', product_url)
                     continue
                 product_id = matches.group(1).replace('/', '-')
                 if product_id in seen_products:
@@ -69,51 +75,93 @@ def scrape():
                 product_path = os.path.join(name, product_id)
                 if not os.path.exists(product_path):
                     os.mkdir(product_path)
-                # el = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#search-results > ul > li > a")))
-                # action.move_to_element(el).click().perform()
 
-                try:
-                    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.buy-box__purchase-form fieldset button')))
-                except:
-                    print('No colors found')
-                    continue
-                color_buttons = driver.find_elements(by=By.CSS_SELECTOR, value='.buy-box__purchase-form fieldset button')
+                if driver.find_elements(By.CSS_SELECTOR, '.ui-slideshow-slide__image-wrapper'):
+                    load_slideshow_product(product_path)
+                else:
+                    load_carousel_product(product_path)
+            # sleep one minute after each page - to avoid beeing blocked
+            time.sleep(60)
 
-                print('color options:', len(color_buttons))
-                for button in color_buttons:
-                    color_name = button.get_attribute('data-color')
-                    if not color_name:
-                        continue
-                    color_name = re.sub(r'[\s|/]', '-', color_name).lower()
 
-                    variant_path = os.path.join(product_path, color_name)
-                    if not os.path.exists(variant_path):
-                        os.mkdir(variant_path)
+def load_carousel_product(product_path):
+    try:
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.buy-box__purchase-form fieldset button')))
+    except:
+        print('No colors found')
+        return
+    color_buttons = driver.find_elements(By.CSS_SELECTOR, '.buy-box__purchase-form fieldset button')
 
-                    button.click()
-                    try:
-                        wait_short.until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, '#apparel-media-image-container .media-center-carousel__image-button > img')))
-                    except:
-                        print('No variants found')
-                        continue
-                    images = driver.find_elements(By.CSS_SELECTOR, '#apparel-media-image-container .media-center-carousel__image-button > img')
-                    print('> {} images: {}'.format(color_name, len(images)))
-                    i = 1
-                    for image in images:
-                        src = image.get_attribute('src')
-                        matches = re.search(r"(/media/(.*)\?size=).*", src)
-                        if matches:
-                            image_base = matches.group(1)
-                            image_id = matches.group(2)
-                            image_url = image_base + '576x768'
-                            print(image_id)
-                            image_path = os.path.join(variant_path, '{}-{}.jpg'.format(i, image_id))
-                            if not os.path.exists(image_path):
-                                urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
-                            i += 1
-                        else:
-                            print('ERROR: cannot parse url', src)
+    print('carousel color options:', len(color_buttons))
+    for button in color_buttons:
+        color_name = button.get_attribute('data-color')
+        if not color_name:
+            continue
+        color_name = re.sub(r'[\s|/]', '-', color_name).lower()
+
+        variant_path = os.path.join(product_path, color_name)
+        if not os.path.exists(variant_path):
+            os.mkdir(variant_path)
+
+        button.click()
+        try:
+            wait_short.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, '#apparel-media-image-container .media-center-carousel__image-button > img')))
+        except:
+            print('No variants found')
+            continue
+        images = driver.find_elements(By.CSS_SELECTOR, '#apparel-media-image-container .media-center-carousel__image-button > img')
+        print('> {} carousel images: {}'.format(color_name, len(images)))
+        i = 1
+        for image in images:
+            src = image.get_attribute('src')
+            src = src.replace('https://www.rei.com', '')
+            matches = re.search(r"(/media/(.*)\?size=).*", src)
+            if matches:
+                download_image(variant_path, i, matches)
+                i += 1
+            else:
+                print('ERROR: cannot parse url', src)
+
+
+def load_slideshow_product(product_path):
+    try:
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'ui-slideshow-navigation .ui-slideshow-control__image')))
+    except:
+        print('No variants found')
+        return
+    images = driver.find_elements(By.CSS_SELECTOR, 'ui-slideshow-navigation .ui-slideshow-control__image')
+    print('> slideshow images: {}'.format(len(images)))
+    i = 1
+    for image in images:
+        src = image.get_attribute('src')
+        src = src.replace('https://www.rei.com', '')
+        matches = re.search(r"(/media/(.*)(\?size=.*)?)", src)
+        if matches:
+            alt = image.get_attribute('alt')
+            color_name = alt.rpartition(' ')[-1]
+            if not color_name:
+                continue
+            color_name = re.sub(r'[\s|/]', '-', color_name).lower()
+
+            variant_path = os.path.join(product_path, color_name)
+            if not os.path.exists(variant_path):
+                os.mkdir(variant_path)
+
+            download_image(variant_path, i, matches)
+            i += 1
+        else:
+            print('ERROR: cannot parse url', src)
+
+
+def download_image(variant_path, i, matches):
+    image_base = matches.group(1)
+    image_id = matches.group(2)
+    image_url = image_base + '576x768'
+    print(image_id)
+    image_path = os.path.join(variant_path, '{}-{}.jpg'.format(i, image_id))
+    if not os.path.exists(image_path):
+        urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
 
 
 service = Service(executable_path='/Users/ivkin/bin/chromedriver')
