@@ -61,6 +61,7 @@ def scrape():
                 product_id = matches.group(1).replace('/', '-')
                 if product_id in seen_products:
                     continue
+                seen_products.add(product_id)
 
                 print('product url {}\n'.format(product_url))
                 driver.get(product_url)
