@@ -9,15 +9,9 @@ import re
 import urllib.request
 import time
 import shutil
+import socket
 
 urls = [
-    "https://www.rei.com/c/mens-tops",
-    "https://www.rei.com/c/mens-bottoms",
-    "https://www.rei.com/c/mens-swimwear",
-    "https://www.rei.com/c/womens-jackets",
-    "https://www.rei.com/c/womens-tops",
-    "https://www.rei.com/c/womens-bottoms",
-    "https://www.rei.com/c/womens-skirts-and-dresses",
     "https://www.rei.com/c/womens-swimwear",
     "https://www.rei.com/c/womens-yoga-clothing",
     "https://www.rei.com/c/womens-workout-clothing",
@@ -30,6 +24,7 @@ class Scraper:
     driver: webdriver.Chrome = None
     wait: WebDriverWait = None
     wait_short: WebDriverWait = None
+    trial = 1
 
     def scrape(self):
         seen_products = set()
@@ -71,11 +66,11 @@ class Scraper:
                         continue
                     seen_products.add(product_id)
 
-                    self.load_product(product_url, name, product_id, 1)
+                    self.load_product(product_url, name, product_id)
                 # sleep one minute after each page - to avoid being blocked
-                time.sleep(5)
+                time.sleep(1)
 
-    def load_product(self, product_url, name, product_id, trial):
+    def load_product(self, product_url, name, product_id):
         print('product url {}\n'.format(product_url))
 
         product_path = os.path.join(name, product_id)
@@ -98,11 +93,12 @@ class Scraper:
             os.mkdir(product_path)
             shutil.move(tmp_product_path, product_path, copy_function=shutil.copytree)
         else:
-            print('retrying #{} after delay...'.format(trial))
+            print('retrying #{} after delay...'.format(self.trial))
             self.driver.quit()
             self.init_driver()
-            time.sleep(120 * trial)
-            self.load_product(product_url, name, product_id, trial + 1)
+            time.sleep(180 * self.trial)
+            self.trial += 1
+            self.load_product(product_url, name, product_id)
 
     def load_carousel_product(self, product_path):
         try:
@@ -212,6 +208,7 @@ class Scraper:
         self.wait_short = WebDriverWait(self.driver, 5)
 
 
+socket.setdefaulttimeout(30)
 scraper = Scraper()
 try:
     scraper.init_driver()
