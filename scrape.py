@@ -96,7 +96,8 @@ class Scraper:
             print('retrying #{} after delay...'.format(self.trial))
             self.driver.quit()
             self.init_driver()
-            time.sleep(180 * self.trial)
+            delay = min(540, 180 * self.trial)
+            time.sleep(delay)
             self.trial += 1
             self.load_product(product_url, name, product_id)
 
