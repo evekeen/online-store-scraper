@@ -139,7 +139,8 @@ class Scraper:
                 src = src.replace('https://www.rei.com', '')
                 matches = re.search(r"(/media/(.*)\?size=).*", src)
                 if matches:
-                    self.download_image(variant_path, i, matches)
+                    if not self.download_image(variant_path, i, matches):
+                        return False
                     i += 1
                 else:
                     print('ERROR: cannot parse url', src)
@@ -174,7 +175,8 @@ class Scraper:
                 if not os.path.exists(variant_path):
                     os.mkdir(variant_path)
 
-                self.download_image(variant_path, i, matches)
+                if not self.download_image(variant_path, i, matches):
+                    return False
                 i += 1
             else:
                 print('ERROR: cannot parse url', src)
@@ -187,7 +189,15 @@ class Scraper:
         print(image_id)
         image_path = os.path.join(variant_path, '{}-{}.jpg'.format(i, image_id))
         if not os.path.exists(image_path):
-            urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
+            try:
+                urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
+            except:
+                print('retrying the download...')
+                try:
+                    urllib.request.urlretrieve("https://www.rei.com" + image_url, image_path)
+                except:
+                    return False
+        return True
 
     def init_driver(self):
         service = Service(executable_path='/Users/ivkin/bin/chromedriver')
