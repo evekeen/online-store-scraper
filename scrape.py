@@ -12,10 +12,6 @@ import shutil
 import socket
 
 urls = [
-    "https://www.rei.com/c/womens-swimwear",
-    "https://www.rei.com/c/womens-yoga-clothing",
-    "https://www.rei.com/c/womens-workout-clothing",
-    "https://www.rei.com/c/mens-workout-clothing",
     "https://www.rei.com/c/mens-yoga-clothing"
 ]
 
@@ -36,9 +32,12 @@ class Scraper:
                 os.mkdir(name)
 
             page_buttons = self.driver.find_elements(By.CSS_SELECTOR, "nav > a")
-            last_page_url = page_buttons[-2].get_attribute('href')
-            matches = re.search(r"\?page=(\d+)", last_page_url)
-            page_count = int(matches.group(1))
+            if len(page_buttons) > 1:
+                last_page_url = page_buttons[-2].get_attribute('href')
+                matches = re.search(r"\?page=(\d+)", last_page_url)
+                page_count = int(matches.group(1))
+            else:
+                page_count = 2
 
             start_page = 1
 
